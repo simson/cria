@@ -620,7 +620,9 @@ impl super::VikunjaClient {
         match self.get_tasks_paginated().await {
             Ok(tasks) => {
                 debug_log(&format!("Method 1 (paginated): Success, got {} tasks", tasks.len()));
-                return Ok(tasks);
+                if !tasks.is_empty() {
+                    return Ok(tasks);
+                }
             }
             Err(e) => {
                 debug_log(&format!("Method 1 (paginated) failed: {}", e));
@@ -631,7 +633,9 @@ impl super::VikunjaClient {
         match self.get_tasks_simple_with_limit().await {
             Ok(tasks) => {
                 debug_log(&format!("Method 2 (simple with limit): Success, got {} tasks", tasks.len()));
-                return Ok(tasks);
+                if !tasks.is_empty() {
+                    return Ok(tasks);
+                }
             }
             Err(e) => {
                 debug_log(&format!("Method 2 (simple with limit) failed: {}", e));
