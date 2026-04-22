@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Common utilities for integration tests
 
 use cria::config::{CriaConfig, QuickAction};

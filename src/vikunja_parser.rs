@@ -1,6 +1,6 @@
 use crate::debug::debug_log;
 use regex::Regex;
-use chrono::{DateTime, Utc, NaiveDate, Local, Duration, Datelike, TimeZone};
+use chrono::{DateTime, Utc, NaiveDate, Local, Duration, Datelike};
 use chrono_english::{parse_date_string, Dialect};
 use aho_corasick::AhoCorasick;
 
@@ -509,6 +509,8 @@ impl QuickAddParser {
         debug_log(&format!("[MAGIC PARSER TEST] task_tomorrow = {:?}", task_tomorrow));
         assert!(task_tomorrow.start_date.is_some());
     }
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

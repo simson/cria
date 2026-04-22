@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use cria::vikunja::models::{Task, Comment, User};
 
 /// Builder pattern for creating test Task instances with various configurations

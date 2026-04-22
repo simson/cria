@@ -1,5 +1,4 @@
-use cria::url_utils::{extract_urls_from_task, UrlWithContext};
-use cria::vikunja::models::{Task, Comment, User};
+use cria::url_utils::extract_urls_from_task;
 
 mod helpers;
 use helpers::{TaskBuilder};
