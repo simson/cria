@@ -72,32 +72,11 @@ pub async fn handle_edit_modal(
             if should_autocomplete {
                 debug_log(&format!("Auto-completing suggestion in edit modal: {}", app.suggestions[app.selected_suggestion]));
                 let suggestion = app.suggestions[app.selected_suggestion].clone();
-                let cursor = app.edit_cursor_position;
-                let input = app.get_edit_input();
-                if let Some(pos) = input[..cursor].rfind(|c| c == '*' || c == '+') {
-                    let mut new_input = String::new();
-                    new_input.push_str(&input[..pos]); // Include everything up to but not including the * or +
-                    new_input.push(input.chars().nth(pos).unwrap()); // Add the * or + character
-                    
-                    // Wrap multi-word suggestions in square brackets for proper parsing
-                    if suggestion.contains(' ') {
-                        new_input.push_str(&format!("[{}]", suggestion));
-                    } else {
-                        new_input.push_str(&suggestion);
-                    }
-                    
-                    if input.get(cursor..cursor+1).map_or(true, |c| c == " " || c == "") {
-                        new_input.push(' ');
-                        new_input.push_str(&input[cursor..]);
-                        app.edit_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() }) + 1;
-                    } else {
-                        new_input.push_str(&input[cursor..]);
-                        app.edit_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() });
-                    }
-                    app.edit_input = new_input;
-                }
+                App::apply_suggestion_to_input(
+                    &mut app.edit_input,
+                    &mut app.edit_cursor_position,
+                    &suggestion,
+                );
                 let input = app.edit_input.clone();
                 let cursor = app.edit_cursor_position;
                 app.update_suggestions(&input, cursor);
@@ -135,32 +114,11 @@ pub async fn handle_edit_modal(
         KeyCode::Tab => {
             if app.suggestion_mode.is_some() && !app.suggestions.is_empty() {
                 let suggestion = app.suggestions[app.selected_suggestion].clone();
-                let cursor = app.edit_cursor_position;
-                let input = app.get_edit_input();
-                if let Some(pos) = input[..cursor].rfind(|c| c == '*' || c == '+') {
-                    let mut new_input = String::new();
-                    new_input.push_str(&input[..pos]); // Include everything up to but not including the * or +
-                    new_input.push(input.chars().nth(pos).unwrap()); // Add the * or + character
-                    
-                    // Wrap multi-word suggestions in square brackets for proper parsing
-                    if suggestion.contains(' ') {
-                        new_input.push_str(&format!("[{}]", suggestion));
-                    } else {
-                        new_input.push_str(&suggestion);
-                    }
-                    
-                    if input.get(cursor..cursor+1).map_or(true, |c| c == " " || c == "") {
-                        new_input.push(' ');
-                        new_input.push_str(&input[cursor..]);
-                        app.edit_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() }) + 1;
-                    } else {
-                        new_input.push_str(&input[cursor..]);
-                        app.edit_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() });
-                    }
-                    app.edit_input = new_input;
-                }
+                App::apply_suggestion_to_input(
+                    &mut app.edit_input,
+                    &mut app.edit_cursor_position,
+                    &suggestion,
+                );
                 let input = app.edit_input.clone();
                 let cursor = app.edit_cursor_position;
                 app.update_suggestions(&input, cursor);

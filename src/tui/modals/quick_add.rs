@@ -201,8 +201,8 @@ pub async fn handle_quick_add_modal(
             if updated {
                 app.quick_add_input = input.clone();
                 // Reset cursor position to end of input to avoid out-of-bounds issues
-                app.quick_add_cursor_position = input.len();
-                app.update_suggestions(&input, input.len());
+                app.quick_add_cursor_position = App::char_count(&input);
+                app.update_suggestions(&input, app.quick_add_cursor_position);
             }
             // Check if we should auto-complete or submit the task
             let should_autocomplete = if app.suggestion_mode.is_some() && !app.suggestions.is_empty() {
@@ -231,32 +231,11 @@ pub async fn handle_quick_add_modal(
             if should_autocomplete {
                 debug_log(&format!("Auto-completing suggestion: {}", app.suggestions[app.selected_suggestion]));
                 let suggestion = app.suggestions[app.selected_suggestion].clone();
-                let cursor = app.quick_add_cursor_position;
-                let input = app.get_quick_add_input();
-                if let Some(pos) = input[..cursor].rfind(|c| c == '*' || c == '+') {
-                    let mut new_input = String::new();
-                    new_input.push_str(&input[..pos]); // Include everything up to but not including the * or +
-                    new_input.push(input.chars().nth(pos).unwrap()); // Add the * or + character
-                    
-                    // Wrap multi-word suggestions in square brackets for proper parsing
-                    if suggestion.contains(' ') {
-                        new_input.push_str(&format!("[{}]", suggestion));
-                    } else {
-                        new_input.push_str(&suggestion);
-                    }
-                    
-                    if input.get(cursor..cursor+1).map_or(true, |c| c == " " || c == "") {
-                        new_input.push(' ');
-                        new_input.push_str(&input[cursor..]);
-                        app.quick_add_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() }) + 1;
-                    } else {
-                        new_input.push_str(&input[cursor..]);
-                        app.quick_add_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() });
-                    }
-                    app.quick_add_input = new_input;
-                }
+                App::apply_suggestion_to_input(
+                    &mut app.quick_add_input,
+                    &mut app.quick_add_cursor_position,
+                    &suggestion,
+                );
                 let input = app.quick_add_input.clone();
                 let cursor = app.quick_add_cursor_position;
                 app.update_suggestions(&input, cursor);
@@ -339,32 +318,11 @@ pub async fn handle_quick_add_modal(
         KeyCode::Tab => {
             if app.suggestion_mode.is_some() && !app.suggestions.is_empty() {
                 let suggestion = app.suggestions[app.selected_suggestion].clone();
-                let cursor = app.quick_add_cursor_position;
-                let input = app.get_quick_add_input();
-                if let Some(pos) = input[..cursor].rfind(|c| c == '*' || c == '+') {
-                    let mut new_input = String::new();
-                    new_input.push_str(&input[..pos]); // Include everything up to but not including the * or +
-                    new_input.push(input.chars().nth(pos).unwrap()); // Add the * or + character
-                    
-                    // Wrap multi-word suggestions in square brackets for proper parsing
-                    if suggestion.contains(' ') {
-                        new_input.push_str(&format!("[{}]", suggestion));
-                    } else {
-                        new_input.push_str(&suggestion);
-                    }
-                    
-                    if input.get(cursor..cursor+1).map_or(true, |c| c == " " || c == "") {
-                        new_input.push(' ');
-                        new_input.push_str(&input[cursor..]);
-                        app.quick_add_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() }) + 1;
-                    } else {
-                        new_input.push_str(&input[cursor..]);
-                        app.quick_add_cursor_position = pos + 1 + 
-                            (if suggestion.contains(' ') { suggestion.len() + 2 } else { suggestion.len() });
-                    }
-                    app.quick_add_input = new_input;
-                }
+                App::apply_suggestion_to_input(
+                    &mut app.quick_add_input,
+                    &mut app.quick_add_cursor_position,
+                    &suggestion,
+                );
                 let input = app.quick_add_input.clone();
                 let cursor = app.quick_add_cursor_position;
                 app.update_suggestions(&input, cursor);

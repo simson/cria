@@ -482,7 +482,7 @@ pub async fn run_ui(
                             app_guard.add_subtask_cursor_position = 0;
                         }
                         KeyCode::End => {
-                            app_guard.add_subtask_cursor_position = app_guard.add_subtask_input.len();
+                            app_guard.add_subtask_cursor_position = App::char_count(&app_guard.add_subtask_input);
                         }
                         KeyCode::Char(c) => {
                             app_guard.add_char_to_add_subtask(c);

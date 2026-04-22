@@ -45,3 +45,24 @@ fn test_quick_add_cursor_movement() {
     app.move_cursor_right();
     assert_eq!(app.quick_add_cursor_position, 2);
 }
+
+#[test]
+fn test_quick_add_non_ascii_input_does_not_panic() {
+    let mut app = App::default();
+    app.show_quick_add_modal();
+
+    for ch in "test non-ascii char à".chars() {
+        app.add_char_to_quick_add(ch);
+        let input = app.quick_add_input.clone();
+        let cursor = app.quick_add_cursor_position;
+        app.update_suggestions(&input, cursor);
+    }
+
+    assert_eq!(app.quick_add_input, "test non-ascii char à");
+    assert_eq!(app.quick_add_cursor_position, "test non-ascii char à".chars().count());
+
+    app.delete_char_from_quick_add();
+
+    assert_eq!(app.quick_add_input, "test non-ascii char ");
+    assert_eq!(app.quick_add_cursor_position, "test non-ascii char ".chars().count());
+}

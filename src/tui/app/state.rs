@@ -341,6 +341,61 @@ impl App {
     pub fn previous_task(&mut self) { if !self.tasks.is_empty() { self.selected_task_index = if self.selected_task_index == 0 { self.tasks.len() - 1 } else { self.selected_task_index - 1 }; } }
     pub fn get_selected_task(&self) -> Option<&Task> { self.tasks.get(self.selected_task_index) }
 
+    pub(crate) fn char_count(input: &str) -> usize {
+        input.chars().count()
+    }
+
+    pub(crate) fn char_to_byte_index(input: &str, char_index: usize) -> usize {
+        input
+            .char_indices()
+            .nth(char_index)
+            .map_or_else(|| input.len(), |(byte_index, _)| byte_index)
+    }
+
+    pub(crate) fn apply_suggestion_to_input(
+        input: &mut String,
+        cursor_position: &mut usize,
+        suggestion: &str,
+    ) -> bool {
+        let cursor_byte_index = Self::char_to_byte_index(input, *cursor_position);
+        let before_cursor = &input[..cursor_byte_index];
+
+        if let Some(pos) = before_cursor.rfind(|c| c == '*' || c == '+') {
+            let marker = input[pos..].chars().next().unwrap_or('+');
+            let after_cursor = &input[cursor_byte_index..];
+            let mut new_input = String::new();
+
+            new_input.push_str(&input[..pos]);
+            new_input.push(marker);
+
+            if suggestion.contains(' ') {
+                new_input.push('[');
+                new_input.push_str(suggestion);
+                new_input.push(']');
+            } else {
+                new_input.push_str(suggestion);
+            }
+
+            let mut new_cursor_position = Self::char_count(&new_input);
+            let after_starts_with_space = after_cursor.chars().next() == Some(' ');
+
+            if after_starts_with_space {
+                new_cursor_position += 1;
+            } else if after_cursor.is_empty() {
+                new_input.push(' ');
+                new_cursor_position += 1;
+            }
+
+            new_input.push_str(after_cursor);
+
+            *input = new_input;
+            *cursor_position = new_cursor_position;
+            return true;
+        }
+
+        false
+    }
+
     pub fn get_detailed_task(&self, task_id: i64) -> Option<&Task> {
         self.detailed_task_cache.get(&task_id)
     }
@@ -356,10 +411,20 @@ impl App {
         self.quick_add_cursor_position = 0; 
     }
     pub fn hide_quick_add_modal(&mut self) { self.show_quick_add_modal = false; self.quick_add_input.clear(); self.quick_add_cursor_position = 0; }
-    pub fn add_char_to_quick_add(&mut self, c: char) { self.quick_add_input.insert(self.quick_add_cursor_position, c); self.quick_add_cursor_position += 1; }
-    pub fn delete_char_from_quick_add(&mut self) { if self.quick_add_cursor_position > 0 { self.quick_add_cursor_position -= 1; self.quick_add_input.remove(self.quick_add_cursor_position); } }
+    pub fn add_char_to_quick_add(&mut self, c: char) {
+        let byte_index = Self::char_to_byte_index(&self.quick_add_input, self.quick_add_cursor_position);
+        self.quick_add_input.insert(byte_index, c);
+        self.quick_add_cursor_position += 1;
+    }
+    pub fn delete_char_from_quick_add(&mut self) {
+        if self.quick_add_cursor_position > 0 {
+            self.quick_add_cursor_position -= 1;
+            let byte_index = Self::char_to_byte_index(&self.quick_add_input, self.quick_add_cursor_position);
+            self.quick_add_input.remove(byte_index);
+        }
+    }
     pub fn move_cursor_left(&mut self) { if self.quick_add_cursor_position > 0 { self.quick_add_cursor_position -= 1; } }
-    pub fn move_cursor_right(&mut self) { if self.quick_add_cursor_position < self.quick_add_input.len() { self.quick_add_cursor_position += 1; } }
+    pub fn move_cursor_right(&mut self) { if self.quick_add_cursor_position < Self::char_count(&self.quick_add_input) { self.quick_add_cursor_position += 1; } }
     pub fn get_quick_add_input(&self) -> &str { &self.quick_add_input }
     pub fn clear_quick_add_input(&mut self) { self.quick_add_input.clear(); self.quick_add_cursor_position = 0; }
     pub fn toggle_debug_pane(&mut self) { self.show_debug_pane = !self.show_debug_pane; }
@@ -388,7 +453,7 @@ impl App {
             self.show_edit_modal = true; 
             self.editing_task_id = Some(task_id); 
             self.edit_input = magic_syntax; 
-            self.edit_cursor_position = self.edit_input.len(); 
+            self.edit_cursor_position = Self::char_count(&self.edit_input); 
         } 
     }
     pub fn hide_edit_modal(&mut self) { self.show_edit_modal = false; self.edit_input.clear(); self.edit_cursor_position = 0; self.editing_task_id = None; }
@@ -407,10 +472,20 @@ impl App {
         self.form_edit_state = None;
     }
     
-    pub fn add_char_to_edit(&mut self, c: char) { self.edit_input.insert(self.edit_cursor_position, c); self.edit_cursor_position += 1; }
-    pub fn delete_char_from_edit(&mut self) { if self.edit_cursor_position > 0 { self.edit_cursor_position -= 1; self.edit_input.remove(self.edit_cursor_position); } }
+    pub fn add_char_to_edit(&mut self, c: char) {
+        let byte_index = Self::char_to_byte_index(&self.edit_input, self.edit_cursor_position);
+        self.edit_input.insert(byte_index, c);
+        self.edit_cursor_position += 1;
+    }
+    pub fn delete_char_from_edit(&mut self) {
+        if self.edit_cursor_position > 0 {
+            self.edit_cursor_position -= 1;
+            let byte_index = Self::char_to_byte_index(&self.edit_input, self.edit_cursor_position);
+            self.edit_input.remove(byte_index);
+        }
+    }
     pub fn move_edit_cursor_left(&mut self) { if self.edit_cursor_position > 0 { self.edit_cursor_position -= 1; } }
-    pub fn move_edit_cursor_right(&mut self) { if self.edit_cursor_position < self.edit_input.len() { self.edit_cursor_position += 1; } }
+    pub fn move_edit_cursor_right(&mut self) { if self.edit_cursor_position < Self::char_count(&self.edit_input) { self.edit_cursor_position += 1; } }
     pub fn get_edit_input(&self) -> &str { &self.edit_input }
     pub fn clear_edit_input(&mut self) { self.edit_input.clear(); self.edit_cursor_position = 0; }
     fn task_to_magic_syntax(&self, task: &crate::vikunja::models::Task) -> String {
@@ -456,7 +531,8 @@ impl App {
     // --- Task manipulation logic moved to tasks.rs ---
     pub fn update_suggestions(&mut self, input: &str, cursor: usize) {
         // Find the last * or + before the cursor
-        let before_cursor = &input[..cursor];
+        let cursor_byte_index = Self::char_to_byte_index(input, cursor);
+        let before_cursor = &input[..cursor_byte_index];
         
         // Helper function to check if we're still in a suggestion context
         // We stop suggestions when we encounter certain delimiters or control characters
@@ -1220,14 +1296,16 @@ impl App {
     }
 
     pub fn add_char_to_add_subtask(&mut self, c: char) {
-        self.add_subtask_input.insert(self.add_subtask_cursor_position, c);
+        let byte_index = Self::char_to_byte_index(&self.add_subtask_input, self.add_subtask_cursor_position);
+        self.add_subtask_input.insert(byte_index, c);
         self.add_subtask_cursor_position += 1;
     }
 
     pub fn delete_char_from_add_subtask(&mut self) {
         if self.add_subtask_cursor_position > 0 {
             self.add_subtask_cursor_position -= 1;
-            self.add_subtask_input.remove(self.add_subtask_cursor_position);
+            let byte_index = Self::char_to_byte_index(&self.add_subtask_input, self.add_subtask_cursor_position);
+            self.add_subtask_input.remove(byte_index);
         }
     }
 
@@ -1238,7 +1316,7 @@ impl App {
     }
 
     pub fn move_add_subtask_cursor_right(&mut self) {
-        if self.add_subtask_cursor_position < self.add_subtask_input.len() {
+        if self.add_subtask_cursor_position < Self::char_count(&self.add_subtask_input) {
             self.add_subtask_cursor_position += 1;
         }
     }

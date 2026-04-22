@@ -33,3 +33,22 @@ fn test_show_edit_and_apply_edit_modal() {
     assert_eq!(app.edit_cursor_position, 0);
     assert_eq!(app.editing_task_id, None);
 }
+
+#[test]
+fn test_edit_modal_handles_non_ascii_cursor_positions() {
+    let mut app = App::default();
+    app.tasks.push(mock_task(42, "Home preparer"));
+    app.selected_task_index = 0;
+    app.show_edit_modal();
+
+    app.add_char_to_edit('à');
+    let input = app.edit_input.clone();
+    let cursor = app.edit_cursor_position;
+    app.update_suggestions(&input, cursor);
+
+    assert!(app.edit_input.ends_with('à'));
+    assert_eq!(app.edit_cursor_position, app.edit_input.chars().count());
+
+    app.delete_char_from_edit();
+    assert!(!app.edit_input.ends_with('à'));
+}
