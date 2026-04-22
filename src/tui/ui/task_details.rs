@@ -1,6 +1,7 @@
 // Task details pane rendering
 
 use crate::tui::app::state::App;
+use crate::tui::theme::TuiTheme;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style, Modifier};
 use ratatui::widgets::{Paragraph, Block, Borders, Wrap};
@@ -10,6 +11,7 @@ use super::hex_to_color;
 
 
 pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
+    let theme = TuiTheme::from_app(app);
     let selected_task = app.get_selected_task();
     
     let details = if let Some(basic_task) = selected_task {
@@ -42,13 +44,13 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                 // Project
         if task.project_id > 0 {
             if let Some(project_name) = app.project_map.get(&task.project_id) {
-                let color = app.project_colors.get(&task.project_id)
-                    .map(|hex_str| hex_to_color(hex_str))
-                    .unwrap_or(Color::Blue);
+                let project_style = app.project_colors.get(&task.project_id)
+                    .map(|hex_str| theme.tag_style_for_hex(hex_str))
+                    .unwrap_or_else(|| Style::default().fg(theme.info));
                 
                 details_lines.push(Line::from(vec![
                     Span::styled("Project: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::styled(&**project_name, Style::default().fg(color))
+                    Span::styled(&**project_name, project_style)
                 ]));
                 details_lines.push(Line::from(""));
             }
@@ -81,7 +83,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                     // Show up to 5 subtasks by name
                     for (_i, subtask) in subtasks.iter().take(5).enumerate() {
                         let status_icon = if subtask.done { "✓" } else { "○" };
-                        let status_color = if subtask.done { Color::Green } else { Color::Gray };
+                        let status_color = if subtask.done { theme.success } else { theme.muted_text };
                         
                         details_lines.push(Line::from(vec![
                             Span::raw("  • "),
@@ -95,7 +97,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                         details_lines.push(Line::from(vec![
                             Span::raw("  "),
                             Span::styled(format!("... and {} more", subtasks.len() - 5), 
-                                Style::default().fg(Color::DarkGray))
+                                Style::default().fg(theme.subtle_text))
                         ]));
                     }
                     
@@ -151,12 +153,12 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
         if let Some(priority) = task.priority {
             if priority > 0 {
                 let priority_color = match priority {
-                    5 => Color::Red,
+                    5 => theme.priority_color(5),
                     4 => Color::Rgb(255, 165, 0),
-                    3 => Color::Yellow,
-                    2 => Color::Blue,
-                    1 => Color::Magenta,
-                    _ => Color::White,
+                    3 => theme.priority_color(3),
+                    2 => theme.priority_color(2),
+                    1 => theme.priority_color(1),
+                    _ => theme.text,
                 };
                 details_lines.push(Line::from(vec![
                     Span::styled("Priority: ", Style::default().add_modifier(Modifier::BOLD)),
@@ -275,8 +277,11 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
             if !labels.is_empty() {
                 let mut labels_line_spans = vec![Span::styled("Labels: ", Style::default().add_modifier(Modifier::BOLD))];
                 for (i, label) in labels.iter().enumerate() {
-                    let color = hex_to_color(label.hex_color.as_deref().unwrap_or(""));
-                    labels_line_spans.push(Span::styled(&label.title, Style::default().fg(color)));
+                    let style = label.hex_color
+                        .as_deref()
+                        .map(|hex| theme.tag_style_for_hex(hex))
+                        .unwrap_or_else(|| Style::default().fg(theme.muted_text));
+                    labels_line_spans.push(Span::styled(&label.title, style));
                     if i < labels.len() - 1 {
                         labels_line_spans.push(Span::raw(", "));
                     }
@@ -300,7 +305,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                     } else {
                         format!("@{}", assignee.username)
                     };
-                    assignees_line_spans.push(Span::styled(display_name, Style::default().fg(Color::Cyan)));
+                    assignees_line_spans.push(Span::styled(display_name, Style::default().fg(theme.info)));
                     if i < assignees.len() - 1 {
                         assignees_line_spans.push(Span::raw(", "));
                     }
@@ -367,7 +372,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                 
                 details_lines.push(Line::from(vec![
                     Span::raw("  "),
-                    Span::styled("💾", Style::default().fg(Color::Cyan)),
+                    Span::styled("💾", Style::default().fg(theme.info)),
                     Span::raw(format!(" Total size: {}", size_text))
                 ]));
                 
@@ -404,7 +409,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                             Span::raw("  "),
                             Span::styled(icon, Style::default().fg(Color::Yellow)),
                             Span::raw(" "),
-                            Span::styled(file_name, Style::default().fg(Color::Blue))
+                            Span::styled(file_name, Style::default().fg(theme.info))
                         ]));
                     }
                 }
@@ -412,14 +417,14 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
                 if attachments.len() > max_show {
                     details_lines.push(Line::from(vec![
                         Span::raw("  "),
-                        Span::styled("...", Style::default().fg(Color::Gray)),
+                        Span::styled("...", Style::default().fg(theme.muted_text)),
                         Span::raw(format!(" and {} more", attachments.len() - max_show))
                     ]));
                 }
                 
                 details_lines.push(Line::from(vec![
                     Span::raw("  "),
-                    Span::styled("Press '.a' to view all attachments", Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC))
+                    Span::styled("Press '.a' to view all attachments", Style::default().fg(theme.muted_text).add_modifier(Modifier::ITALIC))
                 ]));
                 details_lines.push(Line::from(""));
             }
@@ -473,9 +478,9 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
 
                     details_lines.push(Line::from(vec![
                         Span::raw("  ─ "),
-                        Span::styled(author.clone(), Style::default().fg(Color::Cyan)),
+                        Span::styled(author.clone(), Style::default().fg(theme.info)),
                         Span::raw("  "),
-                        Span::styled(date_str.clone(), Style::default().fg(Color::DarkGray)),
+                        Span::styled(date_str.clone(), Style::default().fg(theme.subtle_text)),
                     ]));
                     details_lines.push(Line::from(vec![
                         Span::raw("     "),
@@ -583,7 +588,7 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
             };
             details_lines.push(Line::from(vec![
                 Span::styled("Created by: ", Style::default().add_modifier(Modifier::BOLD)),
-                Span::styled(creator_name, Style::default().fg(Color::Cyan))
+                Span::styled(creator_name, Style::default().fg(theme.info))
             ]));
             
             if let Some(created) = &task.created {
@@ -706,7 +711,14 @@ pub fn draw_task_details(f: &mut Frame, app: &App, area: Rect) {
         vec![Line::from("No task selected")]
     };
     let paragraph = Paragraph::new(details)
-        .block(Block::default().borders(Borders::ALL).title("Task Details"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Task Details")
+                .border_style(Style::default().fg(theme.border))
+                .style(Style::default().bg(theme.surface).fg(theme.text)),
+        )
+        .style(Style::default().bg(theme.surface).fg(theme.text))
         .wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
 }

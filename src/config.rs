@@ -3,6 +3,24 @@ use std::fs;
 use std::path::PathBuf;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TuiThemeConfig {
+    pub background: Option<String>,
+    pub surface: Option<String>,
+    pub surface_alt: Option<String>,
+    pub text: Option<String>,
+    pub muted_text: Option<String>,
+    pub subtle_text: Option<String>,
+    pub border: Option<String>,
+    pub accent: Option<String>,
+    pub success: Option<String>,
+    pub warning: Option<String>,
+    pub danger: Option<String>,
+    pub info: Option<String>,
+    pub selection_bg: Option<String>,
+    pub selection_fg: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuickAction {
     pub key: String,
@@ -28,6 +46,7 @@ pub struct CriaConfig {
     pub api_key_file: Option<String>,
     pub default_project: Option<String>,
     pub default_filter: Option<String>,
+    pub tui_theme: Option<TuiThemeConfig>,
     pub quick_actions: Option<Vec<QuickAction>>,
     pub table_columns: Option<Vec<TableColumn>>,
     pub column_layouts: Option<Vec<ColumnLayout>>,
@@ -44,6 +63,7 @@ impl Default for CriaConfig {
             api_key_file: None,
             default_project: None,
             default_filter: None,
+            tui_theme: None,
             quick_actions: None,
             table_columns: None,
             column_layouts: None,

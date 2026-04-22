@@ -2,6 +2,7 @@
 
 use crate::tui::app::state::App;
 use crate::config::{TaskColumn, TableColumn};
+use crate::tui::theme::{parse_theme_color, TuiTheme};
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style, Modifier};
 use ratatui::widgets::{Table, Row, Cell, Block, Borders};
@@ -20,7 +21,7 @@ fn format_date(date: &Option<DateTime<Utc>>) -> String {
     }
 }
 
-fn format_date_relative(date: &Option<DateTime<Utc>>) -> (String, Color) {
+fn format_date_relative(date: &Option<DateTime<Utc>>, theme: &TuiTheme) -> (String, Color) {
     match date {
         Some(dt) => {
             let local: DateTime<Local> = dt.with_timezone(&Local);
@@ -40,19 +41,11 @@ fn format_date_relative(date: &Option<DateTime<Utc>>) -> (String, Color) {
                 format!("{}d ago", -diff)
             };
             
-            let color = if diff < 0 {
-                Color::Red // Overdue
-            } else if diff == 0 {
-                Color::Yellow // Due today
-            } else if diff <= 3 {
-                Color::Cyan // Due soon
-            } else {
-                Color::White // Normal
-            };
+            let color = theme.due_date_color(diff);
             
             (formatted, color)
         }
-        None => ("-".to_string(), Color::DarkGray),
+        None => ("-".to_string(), theme.subtle_text),
     }
 }
 
@@ -157,6 +150,7 @@ fn create_wrapped_cell_for_column<'a>(
     task: &'a crate::vikunja::models::Task, 
     column: &TableColumn, 
     app: &'a App,
+    theme: &TuiTheme,
     width: u16
 ) -> Cell<'a> {
     // Debug which column is being rendered
@@ -176,12 +170,12 @@ fn create_wrapped_cell_for_column<'a>(
             if let Some(p) = task.priority {
                 if p >= 1 && p <= 5 {
                     let color = match p {
-                        5 => Color::Red,
+                        5 => theme.priority_color(5),
                         4 => Color::Rgb(255, 165, 0),
-                        3 => Color::Yellow,
-                        2 => Color::Blue,
-                        1 => Color::Magenta,
-                        _ => Color::White,
+                        3 => theme.priority_color(3),
+                        2 => theme.priority_color(2),
+                        1 => theme.priority_color(1),
+                        _ => theme.text,
                     };
                     spans.push(Span::styled("\u{f024} ", Style::default().fg(color)));
                 }
@@ -196,14 +190,14 @@ fn create_wrapped_cell_for_column<'a>(
             
             // Add hierarchy prefix if present
             if !hierarchy_prefix.is_empty() {
-                spans.push(Span::styled(hierarchy_prefix, Style::default().fg(Color::Gray)));
+                spans.push(Span::styled(hierarchy_prefix, Style::default().fg(theme.subtle_text)));
             }
             
             spans.push(Span::raw(&task.title));
             let line = Line::from(spans);
             let mut cell = Cell::from(line);
             if task.done {
-                cell = cell.style(Style::default().add_modifier(Modifier::CROSSED_OUT).fg(Color::DarkGray));
+                cell = cell.style(Style::default().add_modifier(Modifier::CROSSED_OUT).fg(theme.subtle_text));
             }
             cell
         }
@@ -212,8 +206,8 @@ fn create_wrapped_cell_for_column<'a>(
                 .cloned()
                 .unwrap_or_else(|| "Unknown".to_string());
             let project_color = app.project_colors.get(&task.project_id)
-                .and_then(|hex| Some(hex_to_color(hex.as_str())))
-                .unwrap_or(Color::White);
+                .and_then(|hex| parse_theme_color(Some(hex)))
+                .unwrap_or(theme.text);
             
             let truncated = if project_name.len() > width as usize {
                 format!("{}…", &project_name[..width.saturating_sub(1) as usize])
@@ -228,8 +222,8 @@ fn create_wrapped_cell_for_column<'a>(
                 let mut spans = Vec::new();
                 for (i, label) in labels.iter().enumerate() {
                     let color = app.label_colors.get(&label.id)
-                        .and_then(|hex| Some(hex_to_color(hex.as_str())))
-                        .unwrap_or(ratatui::style::Color::Gray);
+                        .and_then(|hex| parse_theme_color(Some(hex)))
+                        .unwrap_or(theme.muted_text);
                     spans.push(Span::styled(
                         label.title.clone(),
                         Style::default().fg(color),
@@ -249,12 +243,12 @@ fn create_wrapped_cell_for_column<'a>(
             }
         }
         TaskColumn::DueDate => {
-            let (formatted, color) = format_date_relative(&task.due_date);
+            let (formatted, color) = format_date_relative(&task.due_date, theme);
             Cell::from(formatted).style(Style::default().fg(color))
         }
         TaskColumn::StartDate => {
             let formatted = format_date(&task.start_date);
-            Cell::from(formatted).style(Style::default().fg(Color::Cyan))
+            Cell::from(formatted).style(Style::default().fg(theme.info))
         }
         TaskColumn::Priority => {
             
@@ -263,12 +257,12 @@ fn create_wrapped_cell_for_column<'a>(
                     // Nerd Font flag icon:  (U+F024)
                     let flag_icon = "\u{f024} ";
                     let color = match p {
-                        5 => Color::Red,                // Highest priority
+                        5 => theme.priority_color(5),   // Highest priority
                         4 => Color::Rgb(255, 165, 0),   // High priority
-                        3 => Color::Yellow,             // Medium priority
-                        2 => Color::Blue,               // Low priority
-                        1 => Color::Magenta,            // Lowest priority
-                        _ => Color::White,              // Should never happen
+                        3 => theme.priority_color(3),   // Medium priority
+                        2 => theme.priority_color(2),   // Low priority
+                        1 => theme.priority_color(1),   // Lowest priority
+                        _ => theme.text,                // Should never happen
                     };
                     Cell::from(format!("{}{}", flag_icon, p)).style(Style::default().fg(color))
                 }
@@ -279,9 +273,9 @@ fn create_wrapped_cell_for_column<'a>(
         }
         TaskColumn::Status => {
             if task.done {
-                Cell::from("Done").style(Style::default().fg(Color::Green))
+                Cell::from("Done").style(Style::default().fg(theme.success))
             } else {
-                Cell::from("Open").style(Style::default().fg(Color::White))
+                Cell::from("Open").style(Style::default().fg(theme.text))
             }
         }
         TaskColumn::Assignees => {
@@ -320,6 +314,7 @@ fn create_wrapped_cell_for_column<'a>(
 
 
 pub fn draw_tasks_table(f: &mut Frame, app: &App, area: Rect) {
+    let theme = TuiTheme::from_app(app);
     let columns = app.get_current_layout_columns();
     
     let enabled_columns: Vec<&TableColumn> = columns.iter().filter(|c| c.enabled).collect();
@@ -333,7 +328,7 @@ pub fn draw_tasks_table(f: &mut Frame, app: &App, area: Rect) {
     let column_widths = calculate_column_widths(&enabled_columns, &app.tasks, app, available_width);
     
     let header_cells: Vec<Cell> = enabled_columns.iter()
-        .map(|col| Cell::from(col.name.as_str()).style(Style::default().fg(Color::Red)))
+        .map(|col| Cell::from(col.name.as_str()).style(Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)))
         .collect();
     let header = Row::new(header_cells).height(1).bottom_margin(1);
 
@@ -392,19 +387,19 @@ pub fn draw_tasks_table(f: &mut Frame, app: &App, area: Rect) {
                         if i == app.selected_task_index {
                             Cell::from(format_date(&task.due_date))
                         } else {
-                            let (rel, color) = format_date_relative(&task.due_date);
+                            let (rel, color) = format_date_relative(&task.due_date, &theme);
                             Cell::from(rel).style(Style::default().fg(color))
                         }
                     } else if matches!(col.column_type, TaskColumn::StartDate) {
                         // StartDate column: relative by default, calendar on hover
                         if i == app.selected_task_index {
-                            Cell::from(format_date(&task.start_date)).style(Style::default().fg(Color::Cyan))
+                            Cell::from(format_date(&task.start_date)).style(Style::default().fg(theme.info))
                         } else {
-                            let (rel, color) = format_date_relative(&task.start_date);
+                            let (rel, color) = format_date_relative(&task.start_date, &theme);
                             Cell::from(rel).style(Style::default().fg(color))
                         }
                     } else {
-                        create_wrapped_cell_for_column(task, col, app, width)
+                        create_wrapped_cell_for_column(task, col, app, &theme, width)
                     }
                 })
                 .collect();
@@ -443,18 +438,18 @@ pub fn draw_tasks_table(f: &mut Frame, app: &App, area: Rect) {
             if i == app.selected_task_index {
                 // Selected row takes priority over alternating colors
                 if let Some(bg) = flash_bg {
-                    row = row.style(Style::default().bg(bg).add_modifier(Modifier::BOLD));
+                    row = row.style(Style::default().bg(bg).fg(theme.background).add_modifier(Modifier::BOLD));
                 } else {
-                    row = row.style(Style::default().bg(Color::DarkGray));
+                    row = row.style(theme.selection_style());
                 }
             } else if let Some(bg) = flash_bg {
                 // Flash effect takes priority over alternating colors
-                row = row.style(Style::default().bg(bg).add_modifier(Modifier::BOLD));
+                row = row.style(Style::default().bg(bg).fg(theme.background).add_modifier(Modifier::BOLD));
             } else {
                 // Apply alternating row highlighting for easier scanning
                 if i % 2 == 1 {
                     // Every other row gets a subtle background
-                    row = row.style(Style::default().bg(Color::Rgb(40, 40, 50)));
+                    row = row.style(Style::default().bg(theme.surface));
                 }
             }
             row
@@ -476,7 +471,13 @@ pub fn draw_tasks_table(f: &mut Frame, app: &App, area: Rect) {
     
     let table = Table::new(rows, constraints)
         .header(header)
-        .block(Block::default().borders(Borders::ALL).title(title));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .border_style(Style::default().fg(theme.border))
+                .style(Style::default().bg(theme.background).fg(theme.text)),
+        );
     
     f.render_widget(table, area);
 }

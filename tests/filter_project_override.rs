@@ -142,6 +142,7 @@ fn test_config_with_default_filter() {
         api_key_file: None,
         default_project: Some("Inbox".to_string()),
         default_filter: Some("Daily Tasks".to_string()),
+        tui_theme: None,
         quick_actions: None,
         table_columns: None,
         column_layouts: None,

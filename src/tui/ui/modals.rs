@@ -1,5 +1,6 @@
 use crate::tui::app::state::App;
 use crate::tui::app::suggestion_mode::SuggestionMode;
+use crate::tui::theme::TuiTheme;
 use crate::tui::utils::{get_label_color, get_project_color};
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style, Modifier};
@@ -69,9 +70,10 @@ fn colorize_quickadd_input<'a>(input: &'a str, app: &'a App) -> Vec<ratatui::tex
 }
 
 pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
+    let theme = TuiTheme::from_app(app);
     let area = f.size();
     if area.width < 40 || area.height < 10 {
-        let msg = Paragraph::new("Viewport too small for Quick Add modal").style(Style::default().fg(Color::Red));
+        let msg = Paragraph::new("Viewport too small for Quick Add modal").style(Style::default().fg(theme.danger));
         f.render_widget(msg, area);
         return;
     }
@@ -96,10 +98,11 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .title("Quick Add Task")
         .title_alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Green));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().fg(theme.accent).bg(theme.surface));
     let input_paragraph = Paragraph::new(vec![Line::from(input_spans)])
         .block(input_block)
-        .style(Style::default().fg(Color::Yellow));
+        .style(Style::default().fg(theme.text).bg(theme.surface));
     f.render_widget(input_paragraph, modal_chunks[0]);
     let cursor_x = modal_chunks[0].x + 1 + app.quick_add_cursor_position as u16;
     let cursor_y = modal_chunks[0].y + 1;
@@ -127,10 +130,9 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
                 let styled = Span::styled(format!("{}{}", prefix, s), Style::default().fg(color));
                 let absolute_index = start + i;
                 if absolute_index == app.selected_suggestion {
-                    // Highlight with color background and black text
                     Line::from(vec![Span::styled(
                         format!("{}{}", prefix, s),
-                        Style::default().fg(Color::Black).bg(color).add_modifier(Modifier::BOLD)
+                        theme.selection_style()
                     )])
                 } else {
                     Line::from(vec![styled])
@@ -139,7 +141,8 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
         let suggestion_block = Block::default()
             .borders(Borders::ALL)
             .title("Suggestions")
-            .style(Style::default().fg(Color::Gray));
+            .border_style(Style::default().fg(theme.border))
+            .style(Style::default().fg(theme.muted_text).bg(theme.surface));
         let suggestion_paragraph = Paragraph::new(suggestion_lines)
             .block(suggestion_block)
             .wrap(Wrap { trim: true });
@@ -149,7 +152,8 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
         let suggestion_block = Block::default()
             .borders(Borders::ALL)
             .title("Suggestions")
-            .style(Style::default().fg(Color::Gray));
+            .border_style(Style::default().fg(theme.border))
+            .style(Style::default().fg(theme.muted_text).bg(theme.surface));
         let suggestion_paragraph = Paragraph::new("")
             .block(suggestion_block)
             .wrap(Wrap { trim: true });
@@ -158,7 +162,7 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
     // Help text at the bottom
     let help_text = vec![
         Line::from(vec![
-            Span::styled("Quick Add Magic Examples:", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+            Span::styled("Quick Add Magic Examples:", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD))
         ]),
         Line::from(""),
         Line::from(vec![Span::raw("• "), Span::styled("Buy groceries *shopping *urgent", Style::default().fg(Color::White)), Span::raw(" - adds labels")]),
@@ -174,32 +178,35 @@ pub fn draw_quick_add_modal(f: &mut Frame, app: &App) {
         Line::from(vec![Span::raw("• "), Span::styled("new-project:[Work Stuff] Plan meeting", Style::default().fg(Color::White)), Span::raw(" - creates & assigns new project")]),
         Line::from("") ,
         Line::from(vec![
-            Span::styled("Syntax: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("Syntax: ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
             Span::styled("*label ", Style::default().fg(Color::Red)),
             Span::styled("@user ", Style::default().fg(Color::Blue)),
             Span::styled("+project ", Style::default().fg(Color::Magenta)),
-            Span::styled("!priority ", Style::default().fg(Color::Yellow)),
-            Span::styled("dates", Style::default().fg(Color::Cyan))
+            Span::styled("!priority ", Style::default().fg(theme.warning)),
+            Span::styled("dates", Style::default().fg(theme.info))
         ]),
         Line::from("") ,
         Line::from(vec![
-            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("Enter", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
             Span::raw(" to create • "),
-            Span::styled("Escape", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled("Escape", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
             Span::raw(" to cancel")
         ]),
     ];
     let help_block = Block::default()
         .borders(Borders::ALL)
         .title("Help")
-        .style(Style::default().fg(Color::Gray));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().fg(theme.muted_text).bg(theme.surface));
     let help_paragraph = Paragraph::new(help_text)
         .block(help_block)
+        .style(Style::default().fg(theme.text).bg(theme.surface))
         .wrap(Wrap { trim: true });
     f.render_widget(help_paragraph, modal_chunks[2]);
 }
 
 pub fn draw_edit_modal(f: &mut Frame, app: &App) {
+    let theme = TuiTheme::from_app(app);
     let area = f.size();
     let modal_width = (area.width as f32 * 0.8) as u16;
     let modal_height = 22; // Match quick add modal height
@@ -222,10 +229,11 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .title("Edit Task")
         .title_alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Green));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().fg(theme.accent).bg(theme.surface));
     let input_paragraph = Paragraph::new(vec![Line::from(input_spans)])
         .block(input_block)
-        .style(Style::default().fg(Color::Yellow));
+        .style(Style::default().fg(theme.text).bg(theme.surface));
     f.render_widget(input_paragraph, modal_chunks[0]);
     let cursor_x = modal_chunks[0].x + 1 + app.edit_cursor_position as u16;
     let cursor_y = modal_chunks[0].y + 1;
@@ -255,7 +263,7 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
                 if absolute_index == app.selected_suggestion {
                     Line::from(vec![Span::styled(
                         format!("{}{}", prefix, s),
-                        Style::default().fg(Color::Black).bg(color).add_modifier(Modifier::BOLD)
+                        theme.selection_style()
                     )])
                 } else {
                     Line::from(vec![styled])
@@ -264,7 +272,8 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
         let suggestion_block = Block::default()
             .borders(Borders::ALL)
             .title("Suggestions")
-            .style(Style::default().fg(Color::Gray));
+            .border_style(Style::default().fg(theme.border))
+            .style(Style::default().fg(theme.muted_text).bg(theme.surface));
         let suggestion_paragraph = Paragraph::new(suggestion_lines)
             .block(suggestion_block)
             .wrap(Wrap { trim: true });
@@ -273,7 +282,8 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
         let suggestion_block = Block::default()
             .borders(Borders::ALL)
             .title("Suggestions")
-            .style(Style::default().fg(Color::Gray));
+            .border_style(Style::default().fg(theme.border))
+            .style(Style::default().fg(theme.muted_text).bg(theme.surface));
         let suggestion_paragraph = Paragraph::new("")
             .block(suggestion_block)
             .wrap(Wrap { trim: true });
@@ -282,7 +292,7 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
     // Help text at the bottom
     let help_text = vec![
         Line::from(vec![
-            Span::styled("Edit with Quick Add Magic:", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD))
+            Span::styled("Edit with Quick Add Magic:", Style::default().fg(theme.info).add_modifier(Modifier::BOLD))
         ]),
         Line::from(""),
         Line::from(vec![Span::raw("• "), Span::styled("Buy groceries *shopping *urgent", Style::default().fg(Color::White)), Span::raw(" - adds labels")]),
@@ -294,32 +304,35 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
         Line::from(vec![Span::raw("• "), Span::styled("new-project:[Work Stuff] Plan meeting", Style::default().fg(Color::White)), Span::raw(" - creates & assigns new project")]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Syntax: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("Syntax: ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
             Span::styled("*label ", Style::default().fg(Color::Red)),
             Span::styled("@user ", Style::default().fg(Color::Blue)),
             Span::styled("+project ", Style::default().fg(Color::Magenta)),
-            Span::styled("!priority ", Style::default().fg(Color::Yellow)),
-            Span::styled("dates", Style::default().fg(Color::Cyan))
+            Span::styled("!priority ", Style::default().fg(theme.warning)),
+            Span::styled("dates", Style::default().fg(theme.info))
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("Enter", Style::default().fg(theme.success).add_modifier(Modifier::BOLD)),
             Span::raw(" to update • "),
-            Span::styled("Escape", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled("Escape", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
             Span::raw(" to cancel")
         ]),
     ];
     let help_block = Block::default()
         .borders(Borders::ALL)
         .title("Help")
-        .style(Style::default().fg(Color::Gray));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().fg(theme.muted_text).bg(theme.surface));
     let help_paragraph = Paragraph::new(help_text)
         .block(help_block)
+        .style(Style::default().fg(theme.text).bg(theme.surface))
         .wrap(Wrap { trim: true });
     f.render_widget(help_paragraph, modal_chunks[2]);
 }
 
 pub fn draw_confirmation_dialog(f: &mut Frame, app: &App) {
+    let theme = TuiTheme::from_app(app);
     let area = f.size();
     let modal_width = (area.width as f32 * 0.6) as u16;
     let modal_height = 8;
@@ -335,7 +348,8 @@ pub fn draw_confirmation_dialog(f: &mut Frame, app: &App) {
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::White));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().bg(theme.surface).fg(theme.text));
     f.render_widget(block, modal_area);
 
     let message = Paragraph::new(app.confirmation_message.clone())

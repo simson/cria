@@ -57,6 +57,7 @@ pub fn first_run_wizard() -> Option<CriaConfig> {
         api_key_file: None,
         default_project: Some(default_project),
         default_filter: None,
+        tui_theme: None,
         auto_refresh: None,
         refresh_interval_seconds: None,
         quick_actions: None,

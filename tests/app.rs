@@ -489,6 +489,26 @@ refresh_interval_seconds: 120
 }
 
 #[test]
+fn test_config_tui_theme_override() {
+        let yaml_content = r##"
+api_url: "https://test.example.com/api/v1"
+api_key: "test-key"
+default_project: "Test"
+tui_theme:
+  background: "#10141b"
+  text: "#f4f7fb"
+  selection_bg: "#24435c"
+"##;
+
+    let config: CriaConfig = serde_yaml::from_str(yaml_content).expect("Failed to parse config");
+    let theme = config.tui_theme.expect("Expected tui_theme to be parsed");
+
+    assert_eq!(theme.background.as_deref(), Some("#10141b"));
+    assert_eq!(theme.text.as_deref(), Some("#f4f7fb"));
+    assert_eq!(theme.selection_bg.as_deref(), Some("#24435c"));
+}
+
+#[test]
 fn test_task_filter_header_display() {
     let mut app = App::new_with_config(CriaConfig::default(), "Inbox".to_string());
     // Default should be ActiveOnly

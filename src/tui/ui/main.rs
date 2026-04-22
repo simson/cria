@@ -1,6 +1,7 @@
 // Main layout and entry point for TUI drawing
 
 use crate::tui::app::state::App;
+use crate::tui::theme::TuiTheme;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style, Modifier};
 use ratatui::widgets::{Paragraph, Block, Borders, Clear};
@@ -28,8 +29,14 @@ pub fn hex_to_color(hex: &str) -> Color {
 }
 
 pub fn draw(f: &mut Frame, app: &App) {
+    let theme = TuiTheme::from_app(app);
+
     // Use full screen area (no header)
     let body_area = f.size();
+    f.render_widget(
+        Block::default().style(Style::default().bg(theme.background).fg(theme.text)),
+        body_area,
+    );
 
     let _main_layout = if app.show_debug_pane {
         let vertical_chunks = Layout::default()
@@ -132,7 +139,7 @@ pub fn draw(f: &mut Frame, app: &App) {
             height: 1,
         };
         let refresh_msg = Paragraph::new("Refreshing...")
-            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+            .style(Style::default().fg(theme.warning).add_modifier(Modifier::BOLD))
             .alignment(Alignment::Center);
         f.render_widget(Clear, refresh_area);
         f.render_widget(refresh_msg, refresh_area);
@@ -148,8 +155,14 @@ pub fn draw(f: &mut Frame, app: &App) {
             height: 3,
         };
         let notification_msg = Paragraph::new(notification.clone())
-            .block(Block::default().borders(Borders::ALL).title("Layout"))
-            .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Layout")
+                    .border_style(Style::default().fg(theme.border))
+                    .style(Style::default().bg(theme.surface).fg(theme.info)),
+            )
+            .style(Style::default().fg(theme.info).add_modifier(Modifier::BOLD))
             .alignment(Alignment::Center);
         f.render_widget(Clear, notification_area);
         f.render_widget(notification_msg, notification_area);
@@ -165,8 +178,14 @@ pub fn draw(f: &mut Frame, app: &App) {
             height: 3,
         };
         let toast_msg = Paragraph::new(toast.clone())
-            .block(Block::default().borders(Borders::ALL).title("Success"))
-            .style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Success")
+                    .border_style(Style::default().fg(theme.border))
+                    .style(Style::default().bg(theme.surface).fg(theme.success)),
+            )
+            .style(Style::default().fg(theme.success).add_modifier(Modifier::BOLD))
             .alignment(Alignment::Center);
         f.render_widget(Clear, toast_area);
         f.render_widget(toast_msg, toast_area);
@@ -174,10 +193,12 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_debug_pane(f: &mut Frame, app: &App, area: Rect) {
+    let theme = TuiTheme::from_app(app);
     let debug_block = Block::default()
         .title("Debug Log")
         .borders(Borders::ALL)
-        .style(Style::default().fg(Color::Yellow));
+        .border_style(Style::default().fg(theme.border))
+        .style(Style::default().fg(theme.warning).bg(theme.surface));
     
     // Create debug text from messages
     let debug_text: Vec<String> = app.debug_messages
@@ -194,7 +215,7 @@ fn draw_debug_pane(f: &mut Frame, app: &App, area: Rect) {
     
     let debug_widget = Paragraph::new(debug_content)
         .block(debug_block)
-        .style(Style::default().fg(Color::White))
+        .style(Style::default().fg(theme.text).bg(theme.surface))
         .scroll((0, 0));
     
     f.render_widget(debug_widget, area);

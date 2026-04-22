@@ -18,6 +18,25 @@ default_project: "Inbox"
 # The filter name must match exactly (case insensitive)
 # default_filter: "Daily Tasks"
 
+# Optional: override the TUI palette.
+# All fields accept either #RRGGBB values or simple names such as
+# black, red, green, yellow, blue, magenta, cyan, gray, darkgray, white.
+tui_theme:
+  background: "#111318"
+  surface: "#1a1f29"
+  surface_alt: "#222936"
+  text: "#e8ecf3"
+  muted_text: "#b6bfcb"
+  subtle_text: "#7a8596"
+  border: "#7fb3d5"
+  accent: "#78c2ad"
+  success: "#8bc34a"
+  warning: "#e6b450"
+  danger: "#e57373"
+  info: "#64b5f6"
+  selection_bg: "#2d4f67"
+  selection_fg: "#f7fbff"
+
 # Auto-refresh configuration
 # Automatically refresh task data from the server
 auto_refresh: true                     # Enable/disable auto-refresh (default: true)
