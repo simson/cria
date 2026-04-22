@@ -125,12 +125,12 @@ impl QuickAddParser {
         let mut start_matches = vec![];
         for cap in self.start_regex.captures_iter(text) {
             if let Some(m) = cap.get(1) {
-                println!("[DEBUG] start_regex match: {:?}", m.as_str());
+                debug_log(&format!("[MAGIC PARSER] start_regex match: {:?}", m.as_str()));
                 start_matches.push(m.as_str().to_string());
             }
             last_start_cap = Some(cap);
         }
-        println!("[DEBUG] all start_regex matches: {:?}", start_matches);
+        debug_log(&format!("[MAGIC PARSER] all start_regex matches: {:?}", start_matches));
         if let Some(cap) = last_start_cap {
             let start_text = cap.get(1).unwrap().as_str();
             // Support start:eow, start:end of week, etc.
@@ -147,25 +147,25 @@ impl QuickAddParser {
                     .or_else(|| naive.and_hms_opt(0, 0, 0).map(|dt| dt.and_utc()))
                     .or_else(|| naive.and_hms_opt(12, 0, 0).map(|dt| dt.and_utc()));
                 if task.start_date.is_none() {
-                    println!("[DEBUG] now = {:?}", now);
+                    debug_log(&format!("[MAGIC PARSER] now = {:?}", now));
                     let current_weekday = now.weekday().num_days_from_sunday();
-                    println!("[DEBUG] current_weekday = {:?}", current_weekday);
+                    debug_log(&format!("[MAGIC PARSER] current_weekday = {:?}", current_weekday));
                     let days_until_sunday = if current_weekday == 0 { 0 } else { 7 - current_weekday };
-                    println!("[DEBUG] days_until_sunday = {:?}", days_until_sunday);
+                    debug_log(&format!("[MAGIC PARSER] days_until_sunday = {:?}", days_until_sunday));
                     let sunday = now + Duration::days(days_until_sunday as i64);
-                    println!("[DEBUG] sunday = {:?}", sunday);
+                    debug_log(&format!("[MAGIC PARSER] sunday = {:?}", sunday));
                     let naive = sunday.date_naive();
-                    println!("[DEBUG] sunday.date_naive() = {:?}", naive);
+                    debug_log(&format!("[MAGIC PARSER] sunday.date_naive() = {:?}", naive));
                     let try_2359 = naive.and_hms_opt(23, 59, 59);
-                    println!("[DEBUG] naive.and_hms_opt(23,59,59) = {:?}", try_2359);
+                    debug_log(&format!("[MAGIC PARSER] naive.and_hms_opt(23,59,59) = {:?}", try_2359));
                     let try_midnight = naive.and_hms_opt(0, 0, 0);
-                    println!("[DEBUG] naive.and_hms_opt(0,0,0) = {:?}", try_midnight);
+                    debug_log(&format!("[MAGIC PARSER] naive.and_hms_opt(0,0,0) = {:?}", try_midnight));
                     let try_noon = naive.and_hms_opt(12, 0, 0);
-                    println!("[DEBUG] naive.and_hms_opt(12,0,0) = {:?}", try_noon);
+                    debug_log(&format!("[MAGIC PARSER] naive.and_hms_opt(12,0,0) = {:?}", try_noon));
                     let today = Local::now().date_naive();
-                    println!("[DEBUG] today = {:?}", today);
+                    debug_log(&format!("[MAGIC PARSER] today = {:?}", today));
                     let fallback = today.and_hms_opt(0, 0, 0).map(|dt| dt.and_utc());
-                    println!("[DEBUG] fallback = {:?}", fallback);
+                    debug_log(&format!("[MAGIC PARSER] fallback = {:?}", fallback));
                     task.start_date = fallback;
                 }
             } else if start_text_lower == "eom" || start_text_lower == "end of month" {
@@ -181,17 +181,17 @@ impl QuickAddParser {
                     .or_else(|| last_day.and_hms_opt(12, 0, 0).map(|dt| dt.and_utc()));
                 if task.start_date.is_none() {
                     // Debug output for start:eom fallback logic
-                    println!("[DEBUG] Failed to construct start:eom date for last_day {:?}", last_day);
+                    debug_log(&format!("[MAGIC PARSER] Failed to construct start:eom date for last_day {:?}", last_day));
                     let try_2359 = last_day.and_hms_opt(23, 59, 59);
-                    println!("[DEBUG] try_2359 = {:?}", try_2359);
+                    debug_log(&format!("[MAGIC PARSER] try_2359 = {:?}", try_2359));
                     let try_midnight = last_day.and_hms_opt(0, 0, 0);
-                    println!("[DEBUG] try_midnight = {:?}", try_midnight);
+                    debug_log(&format!("[MAGIC PARSER] try_midnight = {:?}", try_midnight));
                     let try_noon = last_day.and_hms_opt(12, 0, 0);
-                    println!("[DEBUG] try_noon = {:?}", try_noon);
+                    debug_log(&format!("[MAGIC PARSER] try_noon = {:?}", try_noon));
                     let today = Local::now().date_naive();
-                    println!("[DEBUG] today = {:?}", today);
+                    debug_log(&format!("[MAGIC PARSER] today = {:?}", today));
                     let fallback = today.and_hms_opt(0, 0, 0).map(|dt| dt.and_utc());
-                    println!("[DEBUG] fallback = {:?}", fallback);
+                    debug_log(&format!("[MAGIC PARSER] fallback = {:?}", fallback));
                     task.start_date = fallback;
                 }
             } else {
@@ -500,13 +500,13 @@ impl QuickAddParser {
     fn test_start_eow_and_tomorrow() {
         let parser = QuickAddParser::new();
         let task_eow = parser.parse("Start project start:eow");
-        println!("[TEST DEBUG] task_eow = {:?}", task_eow);
+        debug_log(&format!("[MAGIC PARSER TEST] task_eow = {:?}", task_eow));
         assert!(task_eow.start_date.is_some());
         let task_eom = parser.parse("Start project start:eom");
-        println!("[TEST DEBUG] task_eom = {:?}", task_eom);
+        debug_log(&format!("[MAGIC PARSER TEST] task_eom = {:?}", task_eom));
         assert!(task_eom.start_date.is_some());
         let task_tomorrow = parser.parse("Start project start:tomorrow");
-        println!("[TEST DEBUG] task_tomorrow = {:?}", task_tomorrow);
+        debug_log(&format!("[MAGIC PARSER TEST] task_tomorrow = {:?}", task_tomorrow));
         assert!(task_tomorrow.start_date.is_some());
     }
 mod tests {
