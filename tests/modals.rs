@@ -2,6 +2,11 @@
 
 use cria::config::CriaConfig;
 use cria::tui::app::state::App;
+use cria::tui::modals::handle_quick_add_modal;
+use cria::vikunja_client::VikunjaClient;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 // Helper to create a sample task for modal tests
 fn sample_task(id: i64, done: bool) -> cria::vikunja::models::Task {
@@ -114,4 +119,25 @@ fn test_undo_redo_from_within_modal() {
     app.undo_last_action();
     assert!(!app.tasks[0].done);
     // Redo not implemented, but you could add a redo stack and test here
+}
+
+#[tokio::test]
+async fn test_quick_add_keeps_input_when_no_project_and_no_default() {
+    let mut app = App::new_with_config(CriaConfig::default(), "Inbox".to_string());
+    app.show_quick_add_modal();
+    app.quick_add_input = "test non-ascii char à".to_string();
+    app.quick_add_cursor_position = app.quick_add_input.chars().count();
+
+    let client = Arc::new(Mutex::new(VikunjaClient::new(
+        "http://localhost:3456/api/v1".to_string(),
+        "demo-token".to_string(),
+    )));
+    let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+
+    handle_quick_add_modal(&mut app, &enter, &client, &client).await;
+
+    assert!(app.show_quick_add_modal);
+    assert_eq!(app.quick_add_input, "test non-ascii char à");
+    assert!(app.get_toast().is_some());
+    assert!(app.get_toast().unwrap().contains("default project"));
 }

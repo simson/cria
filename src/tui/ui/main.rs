@@ -68,7 +68,9 @@ pub fn draw(f: &mut Frame, app: &App) {
     };
 
     // Draw modal on top if active
-    if app.show_help_modal {
+    if app.show_confirmation_dialog {
+        draw_confirmation_dialog(f, app);
+    } else if app.show_help_modal {
         crate::tui::ui::modals::draw_help_modal(f, app);
     } else if app.show_advanced_help_modal {
         crate::tui::ui::modals::draw_advanced_help_modal(f, app);
@@ -92,8 +94,6 @@ pub fn draw(f: &mut Frame, app: &App) {
         draw_quick_add_modal(f, app);
     } else if app.show_edit_modal {
         draw_edit_modal(f, app);
-    } else if app.show_confirmation_dialog {
-        draw_confirmation_dialog(f, app);
     } else if app.show_filter_picker {
         draw_filter_picker_modal(f, app);
     // Relations modals - DISABLED: Incomplete feature

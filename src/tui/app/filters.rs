@@ -221,6 +221,14 @@ impl App {
         }
     }
 
+    /// Get the configured default project, if any, considering filter overrides.
+    pub fn get_configured_default_project(&self) -> Option<String> {
+        self.active_project_override
+            .clone()
+            .or_else(|| self.config.default_project.clone())
+            .filter(|project_name| !project_name.trim().is_empty())
+    }
+
     /// Clear filter and reset project override
     pub fn clear_filter(&mut self) {
         self.current_filter_id = None;

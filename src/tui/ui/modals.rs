@@ -319,7 +319,7 @@ pub fn draw_edit_modal(f: &mut Frame, app: &App) {
     f.render_widget(help_paragraph, modal_chunks[2]);
 }
 
-pub fn draw_confirmation_dialog(f: &mut Frame, _app: &App) {
+pub fn draw_confirmation_dialog(f: &mut Frame, app: &App) {
     let area = f.size();
     let modal_width = (area.width as f32 * 0.6) as u16;
     let modal_height = 8;
@@ -327,24 +327,42 @@ pub fn draw_confirmation_dialog(f: &mut Frame, _app: &App) {
     let y = (area.height.saturating_sub(modal_height)) / 2;
     let modal_area = Rect { x, y, width: modal_width, height: modal_height };
     f.render_widget(Clear, modal_area);
+    let title = if app.pending_action.is_some() {
+        " Confirm Action "
+    } else {
+        " Error "
+    };
     let block = Block::default()
-        .title(" Confirm Action ")
+        .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::White));
     f.render_widget(block, modal_area);
 
-    let buttons_text: Vec<Line> = vec![
-        Line::from("Press "),
-        Line::from("Y").style(Style::default().add_modifier(Modifier::BOLD)),
-        Line::from(" to confirm, or "),
-        Line::from("N").style(Style::default().add_modifier(Modifier::BOLD)),
-        Line::from(" to cancel."),
-    ];
-    let buttons_block = Block::default().borders(Borders::NONE);
+    let message = Paragraph::new(app.confirmation_message.clone())
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true });
+    let message_area = Rect {
+        x: modal_area.x + 2,
+        y: modal_area.y + 1,
+        width: modal_area.width.saturating_sub(4),
+        height: 3,
+    };
+    f.render_widget(message, message_area);
+
+    let buttons_text = if app.pending_action.is_some() {
+        "Press Y to confirm, or N to cancel."
+    } else {
+        "Press Enter, N, or Esc to close."
+    };
     let buttons_paragraph = Paragraph::new(buttons_text)
-        .block(buttons_block)
         .alignment(Alignment::Center);
-    f.render_widget(buttons_paragraph, modal_area);
+    let buttons_area = Rect {
+        x: modal_area.x + 2,
+        y: modal_area.y + modal_area.height.saturating_sub(2),
+        width: modal_area.width.saturating_sub(4),
+        height: 1,
+    };
+    f.render_widget(buttons_paragraph, buttons_area);
 }
 
 pub fn draw_help_modal(f: &mut Frame, app: &App) {

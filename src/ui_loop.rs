@@ -10,6 +10,7 @@ use crate::tui::events::EventHandler;
 use crate::tui::ui::main::draw;
 use crate::vikunja_client::VikunjaClient;
 // dispatch_key and refresh_from_api moved here from main.rs
+use crate::tui::confirmation::handle_confirmation_dialog;
 use crate::tui::modals::{handle_quick_add_modal, handle_edit_modal, handle_form_edit_modal};
 
 /// Run the main UI event loop
@@ -34,6 +35,14 @@ pub async fn run_ui(
             // Handle key events only on Press or Repeat, ignore Release
             crate::tui::events::Event::Key(key) if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat => {
                 let mut app_guard = app.lock().await;
+
+                // Confirmation dialogs must take precedence over any modal shown underneath.
+                if app_guard.show_confirmation_dialog {
+                    drop(app_guard);
+                    let mut app_guard = app.lock().await;
+                    handle_confirmation_dialog(&mut *app_guard, &key, &client_clone, &client_clone).await;
+                    continue;
+                }
 
                 // Modal input handling
                 if app_guard.show_quick_add_modal {

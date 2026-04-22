@@ -116,7 +116,17 @@ impl App {
             None
         }
     }
-    pub fn cancel_confirmation(&mut self) { self.show_confirmation_dialog = false; self.pending_action = None; }
+    pub fn cancel_confirmation(&mut self) {
+        let has_pending_action = self.pending_action.is_some();
+        self.show_confirmation_dialog = false;
+        self.pending_action = None;
+
+        // Informational dialogs (no pending action) should close in one step,
+        // including the modal underneath that triggered them.
+        if !has_pending_action {
+            self.close_all_modals();
+        }
+    }
     pub async fn execute_delete_task_async(&mut self, task_id: i64, client: &crate::vikunja_client::VikunjaClient) {
         match client.delete_task(task_id).await {
             Ok(_) => {

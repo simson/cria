@@ -245,13 +245,18 @@ pub async fn handle_quick_add_modal(
             debug_log(&format!("Submitting quick add task with input: '{}'", app.get_quick_add_input()));
             let input = app.get_quick_add_input().to_string();
             if !input.trim().is_empty() {
+                let parsed = crate::vikunja_parser::QuickAddParser::new().parse(&input);
+                let Some(default_project_name) = app.get_configured_default_project().or(parsed.project.clone()) else {
+                    app.show_toast("No default project found. Add +project or set default_project in your config.".to_string());
+                    return;
+                };
+
                 debug_log(&format!("QUICK_ADD: Creating task with input: '{}'", input));
                 debug_log(&format!("QUICK_ADD: Input length: {}, trimmed length: {}", input.len(), input.trim().len()));
-                app.hide_quick_add_modal();
-                let default_project_name = app.get_active_default_project();
                 debug_log(&format!("QUICK_ADD: Active default project: '{}'", default_project_name));
                 debug_log(&format!("QUICK_ADD: Project override active: {:?}", app.active_project_override));
                 debug_log(&format!("QUICK_ADD: Current filter ID: {:?}", app.current_filter_id));
+                app.hide_quick_add_modal();
                 let api_client_guard = api_client.lock().await;
                 let default_project_id: Option<u64>;
                 // Try to resolve project name to ID
