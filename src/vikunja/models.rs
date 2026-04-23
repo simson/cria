@@ -1,5 +1,42 @@
-use serde::{Serialize, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use chrono::{DateTime, Utc, Datelike};
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum PercentDoneValue {
+    Integer(i64),
+    Float(f64),
+    String(String),
+}
+
+fn normalize_percent_done(value: f64) -> Option<u8> {
+    if !value.is_finite() || value < 0.0 {
+        return None;
+    }
+
+    let normalized = if value <= 1.0 { value * 100.0 } else { value };
+    Some(normalized.round().clamp(0.0, 100.0) as u8)
+}
+
+pub(crate) fn deserialize_optional_percent_done<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<PercentDoneValue>::deserialize(deserializer)?;
+    Ok(match opt {
+        None => None,
+        Some(PercentDoneValue::Integer(value)) => normalize_percent_done(value as f64),
+        Some(PercentDoneValue::Float(value)) => normalize_percent_done(value),
+        Some(PercentDoneValue::String(value)) => {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                trimmed.parse::<f64>().ok().and_then(normalize_percent_done)
+            }
+        }
+    })
+}
 
 fn deserialize_optional_datetime<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
 where
@@ -76,6 +113,7 @@ pub struct Task {
     pub created: Option<String>,
     pub updated: Option<String>,
     pub created_by: Option<User>,
+    #[serde(default, alias = "percentDone", deserialize_with = "deserialize_optional_percent_done")]
     pub percent_done: Option<u8>,
     pub is_favorite: bool,
     pub position: Option<i64>,
@@ -194,6 +232,102 @@ impl Default for Task {
             repeat_mode: None,
             subscription: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Task;
+
+    #[test]
+    fn test_task_deserializes_fractional_percent_done() {
+        let json = r##"{
+            "id": 32,
+            "title": "Move todo to vikunja",
+            "description": "",
+            "done": false,
+            "done_at": "0001-01-01T00:00:00Z",
+            "project_id": 3,
+            "labels": null,
+            "assignees": null,
+            "priority": 0,
+            "due_date": "0001-01-01T00:00:00Z",
+            "start_date": "0001-01-01T00:00:00Z",
+            "end_date": "0001-01-01T00:00:00Z",
+            "created": "2026-04-22T14:53:48Z",
+            "updated": "2026-04-22T15:04:02Z",
+            "created_by": {
+                "id": 1,
+                "username": "simeon",
+                "name": "",
+                "email": null,
+                "created": "2026-04-22T09:00:32Z",
+                "updated": "2026-04-22T12:22:24Z"
+            },
+            "percent_done": 0.1,
+            "is_favorite": false,
+            "position": 0,
+            "index": 2,
+            "identifier": "#2",
+            "hex_color": "",
+            "cover_image_attachment_id": 0,
+            "bucket_id": 0,
+            "buckets": null,
+            "attachments": null,
+            "comments": null,
+            "reactions": null,
+            "related_tasks": {},
+            "reminders": null,
+            "repeat_after": 0,
+            "repeat_mode": 0,
+            "subscription": null,
+            "future_web_field": { "nested": true }
+        }"##;
+
+        let task: Task = serde_json::from_str(json).unwrap();
+        assert_eq!(task.percent_done, Some(10));
+    }
+
+    #[test]
+    fn test_task_deserializes_camel_case_percent_done() {
+        let json = r##"{
+            "id": 1,
+            "title": "Task",
+            "description": null,
+            "done": false,
+            "done_at": null,
+            "project_id": 1,
+            "labels": null,
+            "assignees": null,
+            "priority": null,
+            "due_date": null,
+            "start_date": null,
+            "end_date": null,
+            "created": null,
+            "updated": null,
+            "created_by": null,
+            "percentDone": "25",
+            "is_favorite": false,
+            "position": null,
+            "index": null,
+            "identifier": null,
+            "hex_color": null,
+            "cover_image_attachment_id": null,
+            "bucket_id": null,
+            "buckets": null,
+            "attachments": null,
+            "comments": null,
+            "reactions": null,
+            "related_tasks": null,
+            "reminders": null,
+            "repeat_after": null,
+            "repeat_mode": null,
+            "subscription": null,
+            "added_by_future_version": [1, 2, 3]
+        }"##;
+
+        let task: Task = serde_json::from_str(json).unwrap();
+        assert_eq!(task.percent_done, Some(25));
     }
 }
 
